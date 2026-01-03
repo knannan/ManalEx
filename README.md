@@ -1,15 +1,17 @@
-# ManalEx
+name: MVP Live Deployment
 
-
-name: MVP Deployment Pipeline
-
-# This triggers the pipeline whenever you push code to the main branch
 on:
   push:
     branches: [ "main" ]
 
+# Grant GITHUB_TOKEN the permissions needed for GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  # STEP 1: BUILD
+  # STEP 1: BUILD & PACKAGE
   build:
     runs-on: ubuntu-latest
     steps:
@@ -17,12 +19,15 @@ jobs:
         uses: actions/checkout@v3
       
       - name: Simulate Build Process
-        run: |
-          echo "Compiling assets..."
-          echo "Minifying JavaScript..."
-          echo "Build Complete!"
+        run: echo "Building the MVP..."
+      
+      # This effectively 'zips' your website files so they are ready to ship
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
 
-  # STEP 2: TEST (Runs only if Build succeeds)
+  # STEP 2: TEST (Must pass before we deploy!)
   test:
     needs: build
     runs-on: ubuntu-latest
@@ -32,7 +37,6 @@ jobs:
       
       - name: Quality Assurance Check
         run: |
-          # This script checks if your HTML file contains the word "Startup"
           if grep -q "Startup" index.html; then
             echo "Test Passed: Branding found!"
           else
@@ -40,13 +44,14 @@ jobs:
             exit 1 
           fi
 
-  # STEP 3: DEPLOY (Runs only if Test succeeds)
+  # STEP 3: DEPLOY TO LIVE INTERNET
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Simulate Deployment
-        run: |
-          echo "Connecting to server..."
-          echo "Uploading files..."
-          echo "🚀 DEPLOYMENT SUCCESSFUL! Your app is live."
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
